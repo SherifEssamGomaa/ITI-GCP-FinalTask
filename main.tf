@@ -29,4 +29,34 @@ resource "google_compute_instance" "private-instance" {
   network_interface {
     subnetwork = "managment-subnetwork"
   }
+  tags = ["allow-ssh"]
+}
+
+resource "google_compute_firewall" "allow-ssh-rule" {
+  project     = "iti-sherif"
+  name        = "allow-ssh-rule"
+  description = "Creates firewall rule to allow ssh"
+  network     = google_compute_network.vpc-network.id 
+  priority    = 100
+  direction   = "INGRESS"
+  allow {
+    protocol  = "tcp"
+    ports     = ["22"]
+  }
+  target_tags = ["allow-ssh"]
+  source_ranges = ["35.235.240.0/20"]
+}
+
+resource "google_compute_router" "router" {
+  name    = "router"
+  network = google_compute_network.vpc-network.id
+  region = "us-central1"
+}
+
+resource "google_compute_router_nat" "nat" {
+  name                               = "nat"
+  router                             = google_compute_router.router.name
+  region                             = "us-central1"
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 }
