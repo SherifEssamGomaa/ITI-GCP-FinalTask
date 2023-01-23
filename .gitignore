@@ -1,4 +1,5 @@
 credintials.json
+credentials.json
 provider.tf
 .terraform/
 .terraform.lock.hcl
