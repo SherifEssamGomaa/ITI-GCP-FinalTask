@@ -73,3 +73,68 @@ resource "google_compute_router_nat" "nat" {
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 }
+
+
+resource "google_service_account" "cluster-service-account" {
+  account_id   = "cluster-service-account"
+  display_name = "cluster-service-account"
+}
+
+ resource "google_container_cluster" "private-cluster" {
+  name       = "private-cluster"
+  location   = "us-central1-a"
+  network    = google_compute_network.vpc-network.name
+  subnetwork = google_compute_subnetwork.restricted-subnetwork.name 
+  release_channel {
+    channel = "REGULAR"
+  }
+  # We can't create a cluster with no node pool defined, but we want to only use
+  # separately managed node pools. So we create the smallest possible default
+  # node pool and immediately delete it.
+  remove_default_node_pool = true
+  initial_node_count       = 1
+  
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = true
+    master_ipv4_cidr_block  = "172.16.0.0/28"
+  }
+
+  ip_allocation_policy {
+    cluster_ipv4_cidr_block = "192.168.0.0/16"
+    services_ipv4_cidr_block = "10.96.0.0/16" 
+  }
+
+  master_authorized_networks_config {
+    cidr_blocks {
+      display_name = "Management-subnet"
+      cidr_block = "10.0.1.0/24"
+    }
+  }
+}
+
+resource "google_container_node_pool" "private-cluster-node-pool" {
+  name       = "private-cluster-node-pool"
+  location   = "us-central1-a"
+  cluster    = google_container_cluster.private-cluster.name
+  node_count = 3
+
+  upgrade_settings {
+    max_surge       = 1
+    max_unavailable = 0
+  }
+
+  node_config {
+    preemptible  = true
+    machine_type = "e2-micro"
+    disk_type    = "pd-standard"
+    disk_size_gb = 10
+    image_type   = "COS_CONTAINERD"
+    tags = ["allow-ssh"]
+    # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
+    service_account = google_service_account.cluster-service-account.email
+    oauth_scopes    = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+  }
+}
