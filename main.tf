@@ -1,7 +1,7 @@
 resource "google_compute_network" "vpc-network" {
   project                 = "iti-sherif"
   name                    = "vpc-network"
-  auto_create_subnetworks = true
+  auto_create_subnetworks = false
   mtu                     = 1460
 }
 
@@ -14,18 +14,18 @@ resource "google_compute_subnetwork" "managment-subnetwork" {
   ]
 }
 
-resource "google_compute_firewall" "deny-egress-rule" {
-  project     = "iti-sherif"
-  name        = "deny-egress-rule"
-  description = "Creates firewall rule to deny egress for the restricted subnetwork"
-  network     = google_compute_network.vpc-network
-  priority    = 100
-  direction = "EGRESS"
-  source_ranges = [ "10.0.2.0/24" ]
-  deny {
-    protocol  = "all"
-  }
-}
+# resource "google_compute_firewall" "deny-egress-rule" {
+#   project     = "iti-sherif"
+#   name        = "deny-egress-rule"
+#   description = "Creates firewall rule to deny egress for the restricted subnetwork"
+#   network     = google_compute_network.vpc-network.id
+#   priority    = 100
+#   direction = "EGRESS"
+#   source_ranges = [ "10.0.2.0/24" ]
+#   deny {
+#     protocol  = "all"
+#   }
+# }
 
 resource "google_compute_subnetwork" "restricted-subnetwork" {
   name          = "restricted-subnetwork"
@@ -36,26 +36,26 @@ resource "google_compute_subnetwork" "restricted-subnetwork" {
   ]
 }
 
-resource "google_project_iam_member" "instance-service-account-role" {
-  project = "iti-sherif"
-  role    = "roles/container.admin"
-  member  = "serviceAccount:${google_service_account.instance-service-account.email}"
-}
+# resource "google_project_iam_member" "instance-service-account-role" {
+#   project = "iti-sherif"
+#   role    = "roles/container.admin"
+#   member  = "serviceAccount:${google_service_account.instance-service-account.email}"
+# }
 
-resource "google_service_account" "instance-service-account" {
-  account_id   = "instance-service-account"
-  display_name = "instance-service-account"
-}
+# resource "google_service_account" "instance-service-account" {
+#   account_id   = "instance-service-account"
+#   display_name = "instance-service-account"
+# }
 
 resource "google_compute_instance" "private-instance" {
   allow_stopping_for_update = true
   name         = "private-instance"
   machine_type = "e2-micro"
   zone         = "us-central1-a"
-  service_account {
-    email = google_service_account.instance-service-account.email
-    scopes = [ "https://www.googleapis.com/auth/cloud-platform" ]
-  }
+  # service_account {
+  #   email = google_service_account.instance-service-account.email
+  #   scopes = [ "https://www.googleapis.com/auth/cloud-platform" ]
+  # }
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
