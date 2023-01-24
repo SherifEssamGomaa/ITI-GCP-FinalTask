@@ -14,6 +14,19 @@ resource "google_compute_subnetwork" "managment-subnetwork" {
   ]
 }
 
+resource "google_compute_firewall" "deny-egress-rule" {
+  project     = "iti-sherif"
+  name        = "deny-egress-rule"
+  description = "Creates firewall rule to deny egress for the restricted subnetwork"
+  network     = google_compute_network.vpc-network
+  priority    = 100
+  direction = "EGRESS"
+  source_ranges = [ "10.0.2.0/24" ]
+  deny {
+    protocol  = "all"
+  }
+}
+
 resource "google_compute_subnetwork" "restricted-subnetwork" {
   name          = "restricted-subnetwork"
   ip_cidr_range = "10.0.2.0/24"
