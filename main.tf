@@ -14,18 +14,18 @@ resource "google_compute_subnetwork" "managment-subnetwork" {
   ]
 }
 
-# resource "google_compute_firewall" "deny-egress-rule" {
-#   project     = "iti-sherif"
-#   name        = "deny-egress-rule"
-#   description = "Creates firewall rule to deny egress for the restricted subnetwork"
-#   network     = google_compute_network.vpc-network.id
-#   priority    = 100
-#   direction = "EGRESS"
-#   source_ranges = [ "10.0.2.0/24" ]
-#   deny {
-#     protocol  = "all"
-#   }
-# }
+resource "google_compute_firewall" "deny-egress-rule" {
+  project     = "iti-sherif"
+  name        = "deny-egress-rule"
+  description = "Creates firewall rule to deny egress for the restricted subnetwork"
+  network     = google_compute_network.vpc-network.id
+  priority    = 100
+  direction = "EGRESS"
+  source_ranges = [ "10.0.2.0/24" ]
+  deny {
+    protocol  = "all"
+  }
+}
 
 resource "google_compute_subnetwork" "restricted-subnetwork" {
   name          = "restricted-subnetwork"
@@ -36,31 +36,31 @@ resource "google_compute_subnetwork" "restricted-subnetwork" {
   ]
 }
 
-# resource "google_project_iam_member" "instance-service-account-role" {
-#   project = "iti-sherif"
-#   role    = "roles/container.admin"
-#   member  = "serviceAccount:${google_service_account.instance-service-account.email}"
-# }
+resource "google_project_iam_member" "instance-service-account-role" {
+  project = "iti-sherif"
+  role    = "roles/container.admin"
+  member  = "serviceAccount:${google_service_account.instance-service-account.email}"
+}
 
-# resource "google_service_account" "instance-service-account" {
-#   account_id   = "instance-service-account"
-#   display_name = "instance-service-account"
-# }
+resource "google_service_account" "instance-service-account" {
+  account_id   = "instance-service-account"
+  display_name = "instance-service-account"
+}
 
 resource "google_compute_instance" "private-instance" {
   allow_stopping_for_update = true
   name         = "private-instance"
   machine_type = "e2-micro"
   zone         = "us-central1-a"
-  # service_account {
-  #   email = google_service_account.instance-service-account.email
-  #   scopes = [ "https://www.googleapis.com/auth/cloud-platform" ]
-  # }
+  service_account {
+    email = google_service_account.instance-service-account.email
+    scopes = [ "https://www.googleapis.com/auth/cloud-platform" ]
+  }
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      type = "pd-standard"
-      size = 10 
+      type = "pd-ssd"
+      size = 50 
     }
   }
   network_interface {
@@ -71,6 +71,25 @@ resource "google_compute_instance" "private-instance" {
     google_compute_subnetwork.managment-subnetwork,
     google_compute_firewall.allow-ssh-rule
   ]
+  metadata_startup_script = <<-EOF
+    sudo apt-get install  -y apt-transport-https ca-certificates gnupg
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+    sudo apt-get update && sudo apt-get install google-cloud -y
+
+
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+    echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    chmod +x kubectl
+    mkdir -p ~/.local/bin
+    mv ./kubectl ~/.local/bin/kubectl
+    kubectl version --client
+    sudo apt-get install google-cloud-sdk-gke-gcloud-auth-plugin
+    gcloud container clusters get-credentials app-cluster --zone europe-west1-c --project eminent-subset-375011
+  EOF
+  
 }
 
 resource "google_compute_firewall" "allow-ssh-rule" {
@@ -85,7 +104,7 @@ resource "google_compute_firewall" "allow-ssh-rule" {
     ports     = ["22"]
   }
   target_tags = ["allow-ssh"]
-  source_ranges = ["35.235.240.0/20"]
+  source_ranges = ["0.0.0.0/0"]
 }
 
 resource "google_compute_router" "router" {
