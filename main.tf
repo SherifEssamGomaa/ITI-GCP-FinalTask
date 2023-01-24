@@ -23,11 +23,26 @@ resource "google_compute_subnetwork" "restricted-subnetwork" {
   ]
 }
 
+resource "google_project_iam_member" "instance-service-account-role" {
+  project = "iti-sherif"
+  role    = "roles/container.admin"
+  member  = "serviceAccount:${google_service_account.instance-service-account.email}"
+}
+
+resource "google_service_account" "instance-service-account" {
+  account_id   = "instance-service-account"
+  display_name = "instance-service-account"
+}
+
 resource "google_compute_instance" "private-instance" {
   allow_stopping_for_update = true
   name         = "private-instance"
   machine_type = "e2-micro"
   zone         = "us-central1-a"
+  service_account {
+    email = google_service_account.instance-service-account.email
+    scopes = [ "https://www.googleapis.com/auth/cloud-platform" ]
+  }
   boot_disk {
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
@@ -107,7 +122,7 @@ resource "google_service_account" "cluster-service-account" {
 
   master_authorized_networks_config {
     cidr_blocks {
-      display_name = "Management-subnet"
+      display_name = "management-subnet"
       cidr_block = "10.0.1.0/24"
     }
   }
