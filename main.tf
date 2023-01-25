@@ -14,19 +14,6 @@ resource "google_compute_subnetwork" "managment-subnetwork" {
   ]
 }
 
-# resource "google_compute_firewall" "deny-egress-rule" {
-#   project     = "iti-sherif"
-#   name        = "deny-egress-rule"
-#   description = "Creates firewall rule to deny egress for the restricted subnetwork"
-#   network     = google_compute_network.vpc-network.id
-#   priority    = 100
-#   direction = "EGRESS"
-#   source_ranges = [ "10.0.2.0/24" ]
-#   deny {
-#     protocol  = "all"
-#   }
-# }
-
 resource "google_compute_subnetwork" "restricted-subnetwork" {
   name          = "restricted-subnetwork"
   ip_cidr_range = "10.0.2.0/24"
@@ -166,4 +153,15 @@ resource "google_container_node_pool" "private-cluster-node-pool" {
       "https://www.googleapis.com/auth/cloud-platform"
     ]
   }
+}
+
+resource "google_project_iam_member" "docker-service-account-role" {
+  project = "iti-sherif"
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${google_service_account.docker-service-account.email}"
+}
+
+resource "google_service_account" "docker-service-account" {
+  account_id   = "docker-service-account"
+  display_name = "docker-service-account"
 }
