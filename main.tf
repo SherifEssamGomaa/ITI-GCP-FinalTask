@@ -90,13 +90,18 @@ resource "google_compute_router_nat" "nat" {
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
 }
 
-
 resource "google_service_account" "cluster-service-account" {
   account_id   = "cluster-service-account"
   display_name = "cluster-service-account"
 }
 
- resource "google_container_cluster" "private-cluster" {
+resource "google_project_iam_member" "cluster-service-account-role" {
+  project = "iti-sherif"
+  role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${google_service_account.cluster-service-account.email}"
+}
+
+resource "google_container_cluster" "private-cluster" {
   name       = "private-cluster"
   location   = "us-central1-a"
   network    = google_compute_network.vpc-network.name

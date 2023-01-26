@@ -5,3 +5,4 @@ provider.tf
 .terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup
+docer-service-acount-key.json
